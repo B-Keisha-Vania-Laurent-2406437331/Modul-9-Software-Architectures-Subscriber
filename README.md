@@ -15,11 +15,11 @@ So the full URL `amqp://guest:guest@localhost:5672` tells the subscriber to conn
 
 ### Simulation Slow Subscriber
 
-![RabbitMQ_Queue](assets/images/rabbitmq_queue.png)
+![RabbitMQ Queue 1](assets/images/rabbitmq_queue1.png)
 
-**Why is the total number of queued messages 90?**
+**Why is the total number of queued messages 11?**
 
-The total number of queued messages reached 90 because the subscriber was made intentionally
+The total number of queued messages reached 11 because the subscriber was made intentionally
 slow by uncommenting the `thread::sleep(ten_millis)` line, which adds a 1000ms delay for every
 single message it processes. While the subscriber is busy sleeping between each message, the
 publisher was run multiple times in quick succession, sending 5 new messages each time. Since
@@ -28,3 +28,33 @@ the subscriber can only process 1 message per second but the publisher kept send
 consumed. This is the classic producer-consumer imbalance problem, where the producer
 (publisher) is significantly faster than the consumer (subscriber), causing messages to accumulate
 in the broker queue over time.
+
+### Running at Least Three Subscribers
+
+**Three Subscribers Console**
+![Console 1](assets/images/console1.png)
+![Console 2](assets/images/console2.png)
+![Console 3](assets/images/console3.png)
+
+**RabbitMQ with Three Subscribers**
+![RabbitMQ Queue 2](assets/images/rabbitmq_queue2.png)
+
+**Why does the spike reduce quicker with three subscribers?**
+
+With three subscribers running simultaneously, the workload is distributed evenly across all
+three consumers by RabbitMQ using a round-robin mechanism. Instead of one subscriber
+processing all messages alone at 1 message per second, three subscribers can collectively
+process 3 messages per second, tripling the throughput. This is clearly visible in the RabbitMQ
+dashboard where the queue peaked at only around 3 messages compared to around 11 before
+with a single slow subscriber, and dropped back to 0 much faster. Each subscriber independently
+picks up a message from the queue, processes it, and moves on to the next available one, so no
+single subscriber is overwhelmed.
+
+**What can be improved?**
+
+Looking at the current code, one thing that can be improved is that the `thread::sleep` and the
+`now` variable in the subscriber are declared but `now` is never actually used to measure elapsed
+time. If the intent is to simulate or measure processing time, the code should properly use
+`now.elapsed()` to track it. On the publisher side, the events are hardcoded with fixed user data,
+which is not scalable. A better approach would be to dynamically generate or read user data
+from an external source rather than hardcoding five static entries every time the publisher runs.
